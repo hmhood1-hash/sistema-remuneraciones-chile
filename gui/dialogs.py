@@ -5,7 +5,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from gui.estilos import COLORES, FUENTES, aplicar_estilo_boton
 from gui.widgets import CampoFormulario
-from database.models import insert, update, fetch_one, delete
+from database.models import insert, update, fetch_one, delete, fetch_all
 from ui.utils import validar_rut
 import re
 
@@ -15,13 +15,17 @@ class CampoRUT(ttk.Entry):
     Campo de entrada especializado para RUT con formateo automático
     """
     def __init__(self, parent, **kwargs):
-        super().__init__(parent, **kwargs)
         self.var = tk.StringVar()
-        self.config(textvariable=self.var)
+        super().__init__(parent, textvariable=self.var, **kwargs)
         self.var.trace('w', self._formatear_rut)
+        self._insertando = False
     
     def _formatear_rut(self, *args):
         """Formatea el RUT automáticamente"""
+        if self._insertando:
+            return
+        
+        self._insertando = True
         valor = self.var.get().upper()
         # Eliminar caracteres no permitidos
         valor = re.sub(r'[^0-9K\-.]', '', valor)
@@ -45,6 +49,7 @@ class CampoRUT(ttk.Entry):
             valor_formateado = ''
         
         self.var.set(valor_formateado)
+        self._insertando = False
 
 
 class CampoFecha(ttk.Entry):
@@ -52,13 +57,17 @@ class CampoFecha(ttk.Entry):
     Campo de entrada especializado para fechas con formateo automático DD/MM/YYYY
     """
     def __init__(self, parent, **kwargs):
-        super().__init__(parent, **kwargs)
         self.var = tk.StringVar()
-        self.config(textvariable=self.var)
+        super().__init__(parent, textvariable=self.var, **kwargs)
         self.var.trace('w', self._formatear_fecha)
+        self._insertando = False
     
     def _formatear_fecha(self, *args):
         """Formatea la fecha automáticamente como DD/MM/YYYY"""
+        if self._insertando:
+            return
+        
+        self._insertando = True
         valor = self.var.get()
         # Eliminar caracteres no permitidos
         valor = re.sub(r'[^0-9/]', '', valor)
@@ -80,6 +89,7 @@ class CampoFecha(ttk.Entry):
             valor_formateado = ''
         
         self.var.set(valor_formateado)
+        self._insertando = False
 
 
 class DialogoEmpresa(tk.Toplevel):
@@ -348,7 +358,7 @@ class DialogoTrabajador(tk.Toplevel):
     def __init__(self, parent, trabajador=None, empresa_codigo=None):
         super().__init__(parent)
         self.title('Nuevo Trabajador' if not trabajador else 'Editar Trabajador')
-        self.geometry('700x900')
+        self.geometry('700x950')
         self.resizable(True, True)
         self.trabajador = trabajador
         self.empresa_codigo = empresa_codigo
@@ -399,6 +409,27 @@ class DialogoTrabajador(tk.Toplevel):
         
         # Separador
         ttk.Separator(scrollable_frame, orient='horizontal').pack(fill='x', pady=10)
+        
+        # SELECCIONAR EMPRESA (solo si es nuevo)
+        if not trabajador:
+            lbl_empresa_sel = ttk.Label(scrollable_frame, text='SELECCIONAR EMPRESA', font=FUENTES['subtitulo'])
+            lbl_empresa_sel.pack(anchor='w', pady=(10, 10))
+            
+            frame_empresa = ttk.Frame(scrollable_frame)
+            frame_empresa.pack(fill='x', pady=10)
+            
+            lbl_empresa = ttk.Label(frame_empresa, text='Empresa *', font=FUENTES['normal'])
+            lbl_empresa.pack(anchor='w', pady=(10, 2))
+            
+            empresas = fetch_all('empresa')
+            empresa_opciones = [f"{e['codigo']} - {e['razon_social']}" for e in empresas]
+            self.combo_empresa = ttk.Combobox(frame_empresa, values=empresa_opciones, state='readonly', font=FUENTES['normal'], width=47)
+            self.combo_empresa.pack(fill='x', pady=(0, 15))
+            
+            # Separador
+            ttk.Separator(scrollable_frame, orient='horizontal').pack(fill='x', pady=10)
+        else:
+            self.combo_empresa = None
         
         # Frame de campos
         frame_campos = ttk.Frame(scrollable_frame)
@@ -584,6 +615,18 @@ class DialogoTrabajador(tk.Toplevel):
             messagebox.showerror('Error', 'Ingrese el sueldo base')
             return
         
+        # Obtener empresa_codigo
+        if not self.trabajador:  # Si es nuevo
+            if not self.combo_empresa or not self.combo_empresa.get():
+                messagebox.showerror('Error', 'Seleccione una empresa')
+                return
+            
+            # Extraer código de empresa del combo
+            empresa_str = self.combo_empresa.get()
+            empresa_codigo = int(empresa_str.split(' - ')[0])
+        else:
+            empresa_codigo = self.trabajador.get('empresa_codigo')
+        
         try:
             sueldo_float = float(sueldo)
             afp_float = float(self.campo_afp.get())
@@ -612,7 +655,7 @@ class DialogoTrabajador(tk.Toplevel):
             'ap_materno': self.campo_ap_materno.get().strip() or None,
             'correo': self.campo_correo.get().strip() or None,
             'fono': self.campo_fono.get().strip() or None,
-            'empresa_codigo': self.empresa_codigo,
+            'empresa_codigo': empresa_codigo,
         }
         
         # Datos para tabla DATOS_LABORALES
