@@ -1,243 +1,388 @@
 """
-Ventanas de diálogo modales
+Diálogos para crear/editar datos en la aplicación
 """
 import tkinter as tk
-from tkinter import ttk, messagebox, simpledialog
-from gui.estilos import COLORES, FUENTES, aplicar_estilo_boton, aplicar_estilo_entrada
+from tkinter import ttk, messagebox
+from gui.estilos import COLORES, FUENTES, aplicar_estilo_boton
 from gui.widgets import CampoFormulario
-from database.models import fetch_one, insert, update
-from calculos.validaciones import validar_rut
-from datetime import datetime
+from database.models import insert, update, fetch_one
+from utils.validaciones import validar_rut
 
 
 class DialogoEmpresa(tk.Toplevel):
     """
-    Diálogo para crear/editar empresa
+    Diálogo para crear/editar empresa con campos visibles
     """
     def __init__(self, parent, empresa=None):
         super().__init__(parent)
-        self.title('Empresa' if not empresa else 'Editar Empresa')
-        self.geometry('500x600')
+        self.title('Nueva Empresa' if not empresa else 'Editar Empresa')
+        self.geometry('600x700')
+        self.resizable(False, False)
         self.empresa = empresa
         self.resultado = None
         
-        # Frame principal
-        frame_principal = ttk.Frame(self, padding='20')
-        frame_principal.pack(fill='both', expand=True)
+        # Hacer que el diálogo sea modal
+        self.transient(parent)
+        self.grab_set()
         
-        # Campos
-        self.campo_rut = CampoFormulario(frame_principal, 'RUT', obligatorio=True)
-        self.campo_rut.pack(fill='x', pady=10)
+        # Configurar color de fondo
+        self.config(bg=COLORES['fondo_principal'])
         
-        self.campo_razon = CampoFormulario(frame_principal, 'Razón Social', obligatorio=True)
-        self.campo_razon.pack(fill='x', pady=10)
+        # Frame principal con scrollbar
+        main_frame = ttk.Frame(self, padding='20')
+        main_frame.pack(fill='both', expand=True)
         
-        self.campo_ciudad = CampoFormulario(frame_principal, 'Ciudad')
-        self.campo_ciudad.pack(fill='x', pady=10)
+        # Título del diálogo
+        lbl_titulo = ttk.Label(
+            main_frame,
+            text='Nueva Empresa' if not empresa else 'Editar Empresa',
+            font=FUENTES['titulo']
+        )
+        lbl_titulo.pack(pady=15)
         
-        self.campo_region = CampoFormulario(frame_principal, 'Región')
-        self.campo_region.pack(fill='x', pady=10)
+        # Separador
+        ttk.Separator(main_frame, orient='horizontal').pack(fill='x', pady=10)
         
-        self.campo_correo = CampoFormulario(frame_principal, 'Correo')
-        self.campo_correo.pack(fill='x', pady=10)
+        # Frame de campos
+        frame_campos = ttk.Frame(main_frame)
+        frame_campos.pack(fill='both', expand=True, pady=10)
         
-        self.campo_fono = CampoFormulario(frame_principal, 'Teléfono')
-        self.campo_fono.pack(fill='x', pady=10)
+        # RUT
+        lbl_rut = ttk.Label(frame_campos, text='RUT *', font=FUENTES['etiqueta'])
+        lbl_rut.pack(anchor='w', pady=(10, 0))
+        self.campo_rut = ttk.Entry(frame_campos, font=FUENTES['normal'], width=40)
+        self.campo_rut.pack(fill='x', pady=(0, 15))
+        
+        # Razón Social
+        lbl_razon = ttk.Label(frame_campos, text='Razón Social *', font=FUENTES['etiqueta'])
+        lbl_razon.pack(anchor='w', pady=(10, 0))
+        self.campo_razon = ttk.Entry(frame_campos, font=FUENTES['normal'], width=40)
+        self.campo_razon.pack(fill='x', pady=(0, 15))
+        
+        # Ciudad
+        lbl_ciudad = ttk.Label(frame_campos, text='Ciudad', font=FUENTES['etiqueta'])
+        lbl_ciudad.pack(anchor='w', pady=(10, 0))
+        self.campo_ciudad = ttk.Entry(frame_campos, font=FUENTES['normal'], width=40)
+        self.campo_ciudad.pack(fill='x', pady=(0, 15))
+        
+        # Región
+        lbl_region = ttk.Label(frame_campos, text='Región', font=FUENTES['etiqueta'])
+        lbl_region.pack(anchor='w', pady=(10, 0))
+        self.campo_region = ttk.Entry(frame_campos, font=FUENTES['normal'], width=40)
+        self.campo_region.pack(fill='x', pady=(0, 15))
+        
+        # Correo
+        lbl_correo = ttk.Label(frame_campos, text='Correo', font=FUENTES['etiqueta'])
+        lbl_correo.pack(anchor='w', pady=(10, 0))
+        self.campo_correo = ttk.Entry(frame_campos, font=FUENTES['normal'], width=40)
+        self.campo_correo.pack(fill='x', pady=(0, 15))
+        
+        # Teléfono
+        lbl_fono = ttk.Label(frame_campos, text='Teléfono', font=FUENTES['etiqueta'])
+        lbl_fono.pack(anchor='w', pady=(10, 0))
+        self.campo_fono = ttk.Entry(frame_campos, font=FUENTES['normal'], width=40)
+        self.campo_fono.pack(fill='x', pady=(0, 15))
+        
+        # Separador antes de botones
+        ttk.Separator(main_frame, orient='horizontal').pack(fill='x', pady=10)
         
         # Frame botones
-        frame_botones = ttk.Frame(frame_principal)
+        frame_botones = ttk.Frame(main_frame)
         frame_botones.pack(fill='x', pady=20)
         
-        btn_guardar = tk.Button(frame_botones, text='Guardar', command=self.guardar)
-        aplicar_estilo_boton(btn_guardar, 'primario')
+        # Botón Guardar
+        btn_guardar = tk.Button(
+            frame_botones,
+            text='💾 Guardar',
+            command=self.guardar,
+            font=FUENTES['boton'],
+            bg=COLORES['azul_primario'],
+            fg='white',
+            padx=20,
+            pady=10,
+            relief='flat',
+            cursor='hand2'
+        )
         btn_guardar.pack(side='left', padx=5)
         
-        btn_cancelar = tk.Button(frame_botones, text='Cancelar', command=self.destroy)
-        aplicar_estilo_boton(btn_cancelar, 'secundario')
+        # Botón Cancelar
+        btn_cancelar = tk.Button(
+            frame_botones,
+            text='❌ Cancelar',
+            command=self.destroy,
+            font=FUENTES['boton'],
+            bg=COLORES['rojo_primario'],
+            fg='white',
+            padx=20,
+            pady=10,
+            relief='flat',
+            cursor='hand2'
+        )
         btn_cancelar.pack(side='left', padx=5)
         
         # Si es edición, cargar datos
         if empresa:
-            self.campo_rut.establecer_valor(empresa.get('rut', ''))
-            self.campo_razon.establecer_valor(empresa.get('razon_social', ''))
-            self.campo_ciudad.establecer_valor(empresa.get('ciudad', ''))
-            self.campo_region.establecer_valor(empresa.get('region', ''))
-            self.campo_correo.establecer_valor(empresa.get('correo', ''))
-            self.campo_fono.establecer_valor(empresa.get('fono', ''))
-            self.campo_rut.entrada.config(state='readonly')
+            self.campo_rut.insert(0, empresa.get('rut', ''))
+            self.campo_rut.config(state='readonly')
+            self.campo_razon.insert(0, empresa.get('razon_social', ''))
+            self.campo_ciudad.insert(0, empresa.get('ciudad', ''))
+            self.campo_region.insert(0, empresa.get('region', ''))
+            self.campo_correo.insert(0, empresa.get('correo', ''))
+            self.campo_fono.insert(0, empresa.get('fono', ''))
+        
+        # Centrar en pantalla
+        self.update_idletasks()
+        x = self.winfo_screenwidth() // 2 - self.winfo_width() // 2
+        y = self.winfo_screenheight() // 2 - self.winfo_height() // 2
+        self.geometry(f'+{x}+{y}')
+        
+        # Focus en primer campo
+        self.campo_rut.focus()
     
     def guardar(self):
         """
         Valida y guarda los datos
         """
-        # Validar
-        if not self.campo_rut.validar() or not self.campo_razon.validar():
+        # Validar campos obligatorios
+        rut = self.campo_rut.get().strip()
+        razon = self.campo_razon.get().strip()
+        
+        if not rut:
+            messagebox.showerror('Error', 'Ingrese el RUT de la empresa')
+            self.campo_rut.focus()
             return
         
-        rut = self.campo_rut.obtener_valor()
+        if not razon:
+            messagebox.showerror('Error', 'Ingrese la Razón Social')
+            self.campo_razon.focus()
+            return
+        
+        # Validar formato RUT
         if not validar_rut(rut):
-            messagebox.showerror('Error', 'RUT inválido')
+            messagebox.showerror('Error', 'RUT inválido. Formato: XX.XXX.XXX-K')
+            self.campo_rut.focus()
             return
         
         datos = {
             'rut': rut,
-            'razon_social': self.campo_razon.obtener_valor(),
-            'ciudad': self.campo_ciudad.obtener_valor(),
-            'region': self.campo_region.obtener_valor(),
-            'correo': self.campo_correo.obtener_valor(),
-            'fono': self.campo_fono.obtener_valor(),
+            'razon_social': razon,
+            'ciudad': self.campo_ciudad.get().strip() or None,
+            'region': self.campo_region.get().strip() or None,
+            'correo': self.campo_correo.get().strip() or None,
+            'fono': self.campo_fono.get().strip() or None,
         }
         
         try:
             if self.empresa:
-                from database.models import update
-                update('empresa', datos, {'rut': self.empresa['rut']})
-                messagebox.showinfo('Éxito', 'Empresa actualizada')
+                # Actualizar empresa existente
+                update('empresas', datos, f"rut = '{rut}'")
+                messagebox.showinfo('Éxito', 'Empresa actualizada correctamente')
             else:
-                from database.models import insert
-                insert('empresa', datos)
-                messagebox.showinfo('Éxito', 'Empresa creada')
+                # Crear nueva empresa
+                insert('empresas', datos)
+                messagebox.showinfo('Éxito', 'Empresa creada correctamente')
             
             self.resultado = datos
             self.destroy()
         except Exception as e:
-            messagebox.showerror('Error', f'Error al guardar: {str(e)}')
+            messagebox.showerror('Error', f'Error al guardar empresa:\n{str(e)}')
 
 
 class DialogoTrabajador(tk.Toplevel):
     """
     Diálogo para crear/editar trabajador
     """
-    def __init__(self, parent, trabajador=None):
+    def __init__(self, parent, trabajador=None, empresa_rut=None):
         super().__init__(parent)
-        self.title('Trabajador' if not trabajador else 'Editar Trabajador')
+        self.title('Nuevo Trabajador' if not trabajador else 'Editar Trabajador')
         self.geometry('600x800')
+        self.resizable(False, False)
         self.trabajador = trabajador
+        self.empresa_rut = empresa_rut
         self.resultado = None
         
-        # Notebook con pestañas
-        notebook = ttk.Notebook(self)
-        notebook.pack(fill='both', expand=True, padx=10, pady=10)
+        # Hacer que el diálogo sea modal
+        self.transient(parent)
+        self.grab_set()
         
-        # Pestaña 1: Datos Personales
-        frame_personal = ttk.Frame(notebook, padding='20')
-        notebook.add(frame_personal, text='Datos Personales')
+        # Configurar color de fondo
+        self.config(bg=COLORES['fondo_principal'])
         
-        self.campo_rut = CampoFormulario(frame_personal, 'RUT', obligatorio=True)
-        self.campo_rut.pack(fill='x', pady=10)
+        # Frame principal
+        main_frame = ttk.Frame(self, padding='20')
+        main_frame.pack(fill='both', expand=True)
         
-        self.campo_nombre = CampoFormulario(frame_personal, 'Nombre', obligatorio=True)
-        self.campo_nombre.pack(fill='x', pady=10)
+        # Título
+        lbl_titulo = ttk.Label(
+            main_frame,
+            text='Nuevo Trabajador' if not trabajador else 'Editar Trabajador',
+            font=FUENTES['titulo']
+        )
+        lbl_titulo.pack(pady=15)
         
-        self.campo_ap_paterno = CampoFormulario(frame_personal, 'Apellido Paterno')
-        self.campo_ap_paterno.pack(fill='x', pady=10)
+        # Separador
+        ttk.Separator(main_frame, orient='horizontal').pack(fill='x', pady=10)
         
-        self.campo_ap_materno = CampoFormulario(frame_personal, 'Apellido Materno')
-        self.campo_ap_materno.pack(fill='x', pady=10)
+        # Frame de campos
+        frame_campos = ttk.Frame(main_frame)
+        frame_campos.pack(fill='both', expand=True, pady=10)
         
-        self.campo_correo = CampoFormulario(frame_personal, 'Correo')
-        self.campo_correo.pack(fill='x', pady=10)
+        # RUT
+        lbl_rut = ttk.Label(frame_campos, text='RUT *', font=FUENTES['etiqueta'])
+        lbl_rut.pack(anchor='w', pady=(10, 0))
+        self.campo_rut = ttk.Entry(frame_campos, font=FUENTES['normal'], width=40)
+        self.campo_rut.pack(fill='x', pady=(0, 15))
         
-        self.campo_fono = CampoFormulario(frame_personal, 'Teléfono')
-        self.campo_fono.pack(fill='x', pady=10)
+        # Nombre
+        lbl_nombre = ttk.Label(frame_campos, text='Nombre Completo *', font=FUENTES['etiqueta'])
+        lbl_nombre.pack(anchor='w', pady=(10, 0))
+        self.campo_nombre = ttk.Entry(frame_campos, font=FUENTES['normal'], width=40)
+        self.campo_nombre.pack(fill='x', pady=(0, 15))
         
-        # Pestaña 2: Datos Laborales
-        frame_laboral = ttk.Frame(notebook, padding='20')
-        notebook.add(frame_laboral, text='Datos Laborales')
+        # Cargo
+        lbl_cargo = ttk.Label(frame_campos, text='Cargo *', font=FUENTES['etiqueta'])
+        lbl_cargo.pack(anchor='w', pady=(10, 0))
+        self.campo_cargo = ttk.Entry(frame_campos, font=FUENTES['normal'], width=40)
+        self.campo_cargo.pack(fill='x', pady=(0, 15))
         
-        self.campo_sueldo = CampoFormulario(frame_laboral, 'Sueldo Base', tipo='monto', obligatorio=True)
-        self.campo_sueldo.pack(fill='x', pady=10)
+        # Sueldo Base
+        lbl_sueldo = ttk.Label(frame_campos, text='Sueldo Base (CLP) *', font=FUENTES['etiqueta'])
+        lbl_sueldo.pack(anchor='w', pady=(10, 0))
+        self.campo_sueldo = ttk.Entry(frame_campos, font=FUENTES['normal'], width=40)
+        self.campo_sueldo.pack(fill='x', pady=(0, 15))
         
-        self.campo_cargo = CampoFormulario(frame_laboral, 'Cargo')
-        self.campo_cargo.pack(fill='x', pady=10)
+        # AFP
+        lbl_afp = ttk.Label(frame_campos, text='AFP (%)', font=FUENTES['etiqueta'])
+        lbl_afp.pack(anchor='w', pady=(10, 0))
+        self.campo_afp = ttk.Entry(frame_campos, font=FUENTES['normal'], width=40)
+        self.campo_afp.insert(0, '10.0')
+        self.campo_afp.pack(fill='x', pady=(0, 15))
         
-        self.campo_fecha_contrato = CampoFormulario(frame_laboral, 'Fecha Contrato (DD-MM-YYYY)')
-        self.campo_fecha_contrato.pack(fill='x', pady=10)
+        # Salud
+        lbl_salud = ttk.Label(frame_campos, text='Salud (%)', font=FUENTES['etiqueta'])
+        lbl_salud.pack(anchor='w', pady=(10, 0))
+        self.campo_salud = ttk.Entry(frame_campos, font=FUENTES['normal'], width=40)
+        self.campo_salud.insert(0, '7.0')
+        self.campo_salud.pack(fill='x', pady=(0, 15))
         
-        self.campo_horas = CampoFormulario(frame_laboral, 'Horas Semanales')
-        self.campo_horas.pack(fill='x', pady=10)
+        # Fecha Ingreso
+        lbl_fecha = ttk.Label(frame_campos, text='Fecha Ingreso (YYYY-MM-DD)', font=FUENTES['etiqueta'])
+        lbl_fecha.pack(anchor='w', pady=(10, 0))
+        self.campo_fecha = ttk.Entry(frame_campos, font=FUENTES['normal'], width=40)
+        self.campo_fecha.pack(fill='x', pady=(0, 15))
         
-        # Pestaña 3: Datos Previsionales
-        frame_previsional = ttk.Frame(notebook, padding='20')
-        notebook.add(frame_previsional, text='Datos Previsionales')
-        
-        ttk.Label(frame_previsional, text='AFP', font=FUENTES['normal']).pack(anchor='w', pady=(5, 2))
-        self.combo_afp = ttk.Combobox(frame_previsional, values=['EMPART', 'SSS', 'CAPITAL', 'CUPRUM', 'HABITAT', 'MODELO', 'PLANVITAL', 'PROVIDA', 'UNO'])
-        self.combo_afp.pack(fill='x', pady=(0, 10))
-        
-        ttk.Label(frame_previsional, text='Isapre', font=FUENTES['normal']).pack(anchor='w', pady=(5, 2))
-        self.combo_isapre = ttk.Combobox(frame_previsional, values=['FONASA', 'VIDATRES', 'CONSALUD', 'BANMEDICA', 'MASVIDA', 'CRUZBLANCA'])
-        self.combo_isapre.pack(fill='x', pady=(0, 10))
-        
-        self.campo_modalidad = CampoFormulario(frame_previsional, 'Modalidad Salud (7%/UF)')
-        self.campo_modalidad.pack(fill='x', pady=10)
+        # Separador
+        ttk.Separator(main_frame, orient='horizontal').pack(fill='x', pady=10)
         
         # Frame botones
-        frame_botones = ttk.Frame(self)
-        frame_botones.pack(fill='x', pady=10, padx=10)
+        frame_botones = ttk.Frame(main_frame)
+        frame_botones.pack(fill='x', pady=20)
         
-        btn_guardar = tk.Button(frame_botones, text='Guardar', command=self.guardar)
-        aplicar_estilo_boton(btn_guardar, 'primario')
+        # Botón Guardar
+        btn_guardar = tk.Button(
+            frame_botones,
+            text='💾 Guardar',
+            command=self.guardar,
+            font=FUENTES['boton'],
+            bg=COLORES['azul_primario'],
+            fg='white',
+            padx=20,
+            pady=10,
+            relief='flat',
+            cursor='hand2'
+        )
         btn_guardar.pack(side='left', padx=5)
         
-        btn_cancelar = tk.Button(frame_botones, text='Cancelar', command=self.destroy)
-        aplicar_estilo_boton(btn_cancelar, 'secundario')
+        # Botón Cancelar
+        btn_cancelar = tk.Button(
+            frame_botones,
+            text='❌ Cancelar',
+            command=self.destroy,
+            font=FUENTES['boton'],
+            bg=COLORES['rojo_primario'],
+            fg='white',
+            padx=20,
+            pady=10,
+            relief='flat',
+            cursor='hand2'
+        )
         btn_cancelar.pack(side='left', padx=5)
+        
+        # Si es edición, cargar datos
+        if trabajador:
+            self.campo_rut.insert(0, trabajador.get('rut', ''))
+            self.campo_rut.config(state='readonly')
+            self.campo_nombre.insert(0, trabajador.get('nombre', ''))
+            self.campo_cargo.insert(0, trabajador.get('cargo', ''))
+            self.campo_sueldo.insert(0, str(trabajador.get('sueldo_base', '')))
+            self.campo_afp.delete(0, 'end')
+            self.campo_afp.insert(0, str(trabajador.get('afp', '10.0')))
+            self.campo_salud.delete(0, 'end')
+            self.campo_salud.insert(0, str(trabajador.get('salud', '7.0')))
+            self.campo_fecha.insert(0, trabajador.get('fecha_ingreso', ''))
+        
+        # Centrar en pantalla
+        self.update_idletasks()
+        x = self.winfo_screenwidth() // 2 - self.winfo_width() // 2
+        y = self.winfo_screenheight() // 2 - self.winfo_height() // 2
+        self.geometry(f'+{x}+{y}')
+        
+        # Focus en primer campo
+        self.campo_rut.focus()
     
     def guardar(self):
         """
-        Valida y guarda los datos
+        Valida y guarda los datos del trabajador
         """
-        if not self.campo_rut.validar() or not self.campo_nombre.validar():
+        rut = self.campo_rut.get().strip()
+        nombre = self.campo_nombre.get().strip()
+        cargo = self.campo_cargo.get().strip()
+        sueldo = self.campo_sueldo.get().strip()
+        
+        if not rut:
+            messagebox.showerror('Error', 'Ingrese el RUT del trabajador')
+            return
+        
+        if not nombre:
+            messagebox.showerror('Error', 'Ingrese el nombre del trabajador')
+            return
+        
+        if not cargo:
+            messagebox.showerror('Error', 'Ingrese el cargo')
+            return
+        
+        if not sueldo:
+            messagebox.showerror('Error', 'Ingrese el sueldo base')
             return
         
         try:
-            rut = self.campo_rut.obtener_valor()
-            if not validar_rut(rut):
-                messagebox.showerror('Error', 'RUT inválido')
-                return
-            
-            datos = {
-                'rut': rut,
-                'nombre': self.campo_nombre.obtener_valor(),
-                'ap_paterno': self.campo_ap_paterno.obtener_valor(),
-                'ap_materno': self.campo_ap_materno.obtener_valor(),
-                'correo': self.campo_correo.obtener_valor(),
-                'fono': self.campo_fono.obtener_valor(),
-            }
-            
+            sueldo_float = float(sueldo)
+            afp_float = float(self.campo_afp.get())
+            salud_float = float(self.campo_salud.get())
+        except ValueError:
+            messagebox.showerror('Error', 'Ingrese valores numéricos válidos')
+            return
+        
+        datos = {
+            'rut': rut,
+            'nombre': nombre,
+            'cargo': cargo,
+            'sueldo_base': sueldo_float,
+            'afp': afp_float,
+            'salud': salud_float,
+            'fecha_ingreso': self.campo_fecha.get().strip() or None,
+            'empresa_rut': self.empresa_rut,
+        }
+        
+        try:
             if self.trabajador:
-                update('trabajador', datos, {'rut': rut})
+                update('trabajadores', datos, f"rut = '{rut}'")
+                messagebox.showinfo('Éxito', 'Trabajador actualizado correctamente')
             else:
-                datos['empresa_codigo'] = 1  # Por defecto
-                insert('trabajador', datos)
-                
-                # Crear datos laborales
-                datos_laborales = {
-                    'trabajador_rut': rut,
-                    'sueldo_base': float(self.campo_sueldo.obtener_valor()),
-                    'cargo': self.campo_cargo.obtener_valor(),
-                    'fecha_contrato': self.campo_fecha_contrato.obtener_valor(),
-                    'horas_semanales': int(self.campo_horas.obtener_valor() or 45),
-                    'dias_laborales_semana': 5,
-                    'sueldo_tipo': 'Mensual',
-                    'aplica_sis': 'S',
-                }
-                insert('datos_laborales', datos_laborales)
-                
-                # Crear datos previsionales
-                datos_previsionales = {
-                    'trabajador_rut': rut,
-                    'afp_codigo': self.combo_afp.get(),
-                    'isapre_codigo': self.combo_isapre.get(),
-                    'modalidad_salud': self.campo_modalidad.obtener_valor(),
-                    'cotizacion_pactada': 7.0,
-                    'tipo_trabajador': 'Activo No Pensionado',
-                }
-                insert('datos_previsionales', datos_previsionales)
+                insert('trabajadores', datos)
+                messagebox.showinfo('Éxito', 'Trabajador creado correctamente')
             
-            messagebox.showinfo('Éxito', 'Trabajador guardado')
             self.resultado = datos
             self.destroy()
         except Exception as e:
-            messagebox.showerror('Error', f'Error al guardar: {str(e)}')
+            messagebox.showerror('Error', f'Error al guardar trabajador:\n{str(e)}')
