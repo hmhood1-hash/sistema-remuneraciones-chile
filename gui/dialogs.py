@@ -18,19 +18,14 @@ class CampoRUT(ttk.Entry):
         self.var = tk.StringVar()
         super().__init__(parent, textvariable=self.var, **kwargs)
         self.var.trace('w', self._formatear_rut)
-        self._insertando = False
     
     def _formatear_rut(self, *args):
         """Formatea el RUT automáticamente"""
-        if self._insertando:
-            return
-        
-        self._insertando = True
         valor = self.var.get().upper()
         # Eliminar caracteres no permitidos
         valor = re.sub(r'[^0-9K\-.]', '', valor)
         
-        # Limitar a 12 caracteres (sin puntos)
+        # Limitar a 9 caracteres (sin puntos ni guión)
         valor_sin_formato = valor.replace('.', '').replace('-', '')
         if len(valor_sin_formato) > 9:
             valor_sin_formato = valor_sin_formato[:9]
@@ -48,8 +43,13 @@ class CampoRUT(ttk.Entry):
         else:
             valor_formateado = ''
         
-        self.var.set(valor_formateado)
-        self._insertando = False
+        # Solo actualizar si cambió
+        if self.var.get() != valor_formateado:
+            # Guardar posición actual del cursor
+            posicion_cursor = len(self.get())
+            self.var.set(valor_formateado)
+            # Mover cursor al final
+            self.icursor(posicion_cursor)
 
 
 class CampoFecha(ttk.Entry):
@@ -60,14 +60,9 @@ class CampoFecha(ttk.Entry):
         self.var = tk.StringVar()
         super().__init__(parent, textvariable=self.var, **kwargs)
         self.var.trace('w', self._formatear_fecha)
-        self._insertando = False
     
     def _formatear_fecha(self, *args):
         """Formatea la fecha automáticamente como DD/MM/YYYY"""
-        if self._insertando:
-            return
-        
-        self._insertando = True
         valor = self.var.get()
         # Eliminar caracteres no permitidos
         valor = re.sub(r'[^0-9/]', '', valor)
@@ -88,8 +83,13 @@ class CampoFecha(ttk.Entry):
         else:
             valor_formateado = ''
         
-        self.var.set(valor_formateado)
-        self._insertando = False
+        # Solo actualizar si cambió
+        if self.var.get() != valor_formateado:
+            # Guardar posición actual del cursor
+            posicion_cursor = len(self.get())
+            self.var.set(valor_formateado)
+            # Mover cursor al final
+            self.icursor(posicion_cursor)
 
 
 class DialogoEmpresa(tk.Toplevel):
