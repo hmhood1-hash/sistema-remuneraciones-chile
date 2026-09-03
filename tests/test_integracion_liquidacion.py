@@ -13,7 +13,9 @@ from modules import liquidacion as mod_liquidacion
 
 class TestLiquidacionIntegracion(unittest.TestCase):
     def setUp(self):
-        self.ruta_bd = tempfile.mktemp(suffix=".db")
+        descriptor, self.ruta_bd = tempfile.mkstemp(suffix=".db")
+        os.close(descriptor)
+        os.remove(self.ruta_bd)
         inicializar_base_datos(self.ruta_bd)
 
         self.codigo_empresa = mod_empresa.crear_empresa(
