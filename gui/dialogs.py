@@ -5,8 +5,81 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from gui.estilos import COLORES, FUENTES, aplicar_estilo_boton
 from gui.widgets import CampoFormulario
-from database.models import insert, update, fetch_one
+from database.models import insert, update, fetch_one, delete
 from ui.utils import validar_rut
+import re
+
+
+class CampoRUT(ttk.Entry):
+    """
+    Campo de entrada especializado para RUT con formateo automático
+    """
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.var = tk.StringVar()
+        self.config(textvariable=self.var)
+        self.var.trace('w', self._formatear_rut)
+    
+    def _formatear_rut(self, *args):
+        """Formatea el RUT automáticamente"""
+        valor = self.var.get().upper()
+        # Eliminar caracteres no permitidos
+        valor = re.sub(r'[^0-9K\-.]', '', valor)
+        
+        # Limitar a 12 caracteres (sin puntos)
+        valor_sin_formato = valor.replace('.', '').replace('-', '')
+        if len(valor_sin_formato) > 9:
+            valor_sin_formato = valor_sin_formato[:9]
+        
+        # Formatear como XX.XXX.XXX-K
+        if len(valor_sin_formato) > 0:
+            if len(valor_sin_formato) <= 2:
+                valor_formateado = valor_sin_formato
+            elif len(valor_sin_formato) <= 5:
+                valor_formateado = valor_sin_formato[:2] + '.' + valor_sin_formato[2:]
+            elif len(valor_sin_formato) <= 8:
+                valor_formateado = valor_sin_formato[:2] + '.' + valor_sin_formato[2:5] + '.' + valor_sin_formato[5:]
+            else:
+                valor_formateado = valor_sin_formato[:2] + '.' + valor_sin_formato[2:5] + '.' + valor_sin_formato[5:8] + '-' + valor_sin_formato[8]
+        else:
+            valor_formateado = ''
+        
+        self.var.set(valor_formateado)
+
+
+class CampoFecha(ttk.Entry):
+    """
+    Campo de entrada especializado para fechas con formateo automático DD/MM/YYYY
+    """
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.var = tk.StringVar()
+        self.config(textvariable=self.var)
+        self.var.trace('w', self._formatear_fecha)
+    
+    def _formatear_fecha(self, *args):
+        """Formatea la fecha automáticamente como DD/MM/YYYY"""
+        valor = self.var.get()
+        # Eliminar caracteres no permitidos
+        valor = re.sub(r'[^0-9/]', '', valor)
+        
+        # Limitar a 8 dígitos
+        valor_sin_formato = valor.replace('/', '')
+        if len(valor_sin_formato) > 8:
+            valor_sin_formato = valor_sin_formato[:8]
+        
+        # Formatear como DD/MM/YYYY
+        if len(valor_sin_formato) > 0:
+            if len(valor_sin_formato) <= 2:
+                valor_formateado = valor_sin_formato
+            elif len(valor_sin_formato) <= 4:
+                valor_formateado = valor_sin_formato[:2] + '/' + valor_sin_formato[2:]
+            else:
+                valor_formateado = valor_sin_formato[:2] + '/' + valor_sin_formato[2:4] + '/' + valor_sin_formato[4:]
+        else:
+            valor_formateado = ''
+        
+        self.var.set(valor_formateado)
 
 
 class DialogoEmpresa(tk.Toplevel):
@@ -72,9 +145,9 @@ class DialogoEmpresa(tk.Toplevel):
         frame_campos.pack(fill='both', expand=True, pady=10)
         
         # RUT
-        lbl_rut = ttk.Label(frame_campos, text='RUT * (Formato: XX.XXX.XXX-K)', font=FUENTES['normal'])
+        lbl_rut = ttk.Label(frame_campos, text='RUT * (Formato automático)', font=FUENTES['normal'])
         lbl_rut.pack(anchor='w', pady=(10, 2))
-        self.campo_rut = ttk.Entry(frame_campos, font=FUENTES['normal'], width=50)
+        self.campo_rut = CampoRUT(frame_campos, font=FUENTES['normal'], width=50)
         self.campo_rut.pack(fill='x', pady=(0, 15))
         
         # Razón Social
@@ -140,7 +213,7 @@ class DialogoEmpresa(tk.Toplevel):
         # RUT Representante Legal
         lbl_rep_rut = ttk.Label(frame_campos, text='RUT Representante Legal', font=FUENTES['normal'])
         lbl_rep_rut.pack(anchor='w', pady=(10, 2))
-        self.campo_rep_rut = ttk.Entry(frame_campos, font=FUENTES['normal'], width=50)
+        self.campo_rep_rut = CampoRUT(frame_campos, font=FUENTES['normal'], width=50)
         self.campo_rep_rut.pack(fill='x', pady=(0, 15))
         
         # Nombre Representante
@@ -188,20 +261,20 @@ class DialogoEmpresa(tk.Toplevel):
         
         # Si es edición, cargar datos
         if empresa:
-            self.campo_rut.insert(0, empresa.get('rut', ''))
+            self.campo_rut.var.set(empresa.get('rut', ''))
             self.campo_rut.config(state='readonly')
             self.campo_razon.insert(0, empresa.get('razon_social', ''))
-            self.campo_calle.insert(0, empresa.get('calle', ''))
-            self.campo_numero.insert(0, empresa.get('numero', ''))
-            self.campo_depto.insert(0, empresa.get('depto', ''))
-            self.campo_comuna.insert(0, empresa.get('comuna', ''))
-            self.campo_ciudad.insert(0, empresa.get('ciudad', ''))
-            self.campo_region.insert(0, empresa.get('region', ''))
-            self.campo_correo.insert(0, empresa.get('correo', ''))
-            self.campo_fono.insert(0, empresa.get('fono', ''))
-            self.campo_giro.insert(0, empresa.get('giro_comercial', ''))
-            self.campo_rep_rut.insert(0, empresa.get('rep_legal_rut', ''))
-            self.campo_rep_nombre.insert(0, empresa.get('rep_legal_nombres', ''))
+            self.campo_calle.insert(0, empresa.get('calle', '') or '')
+            self.campo_numero.insert(0, empresa.get('numero', '') or '')
+            self.campo_depto.insert(0, empresa.get('depto', '') or '')
+            self.campo_comuna.insert(0, empresa.get('comuna', '') or '')
+            self.campo_ciudad.insert(0, empresa.get('ciudad', '') or '')
+            self.campo_region.insert(0, empresa.get('region', '') or '')
+            self.campo_correo.insert(0, empresa.get('correo', '') or '')
+            self.campo_fono.insert(0, empresa.get('fono', '') or '')
+            self.campo_giro.insert(0, empresa.get('giro_comercial', '') or '')
+            self.campo_rep_rut.var.set(empresa.get('rep_legal_rut', '') or '')
+            self.campo_rep_nombre.insert(0, empresa.get('rep_legal_nombres', '') or '')
         
         # Centrar en pantalla
         self.update_idletasks()
@@ -217,7 +290,7 @@ class DialogoEmpresa(tk.Toplevel):
         Valida y guarda los datos
         """
         # Validar campos obligatorios
-        rut = self.campo_rut.get().strip()
+        rut = self.campo_rut.var.get().strip()
         razon = self.campo_razon.get().strip()
         
         if not rut:
@@ -248,14 +321,14 @@ class DialogoEmpresa(tk.Toplevel):
             'correo': self.campo_correo.get().strip() or None,
             'fono': self.campo_fono.get().strip() or None,
             'giro_comercial': self.campo_giro.get().strip() or None,
-            'rep_legal_rut': self.campo_rep_rut.get().strip() or None,
+            'rep_legal_rut': self.campo_rep_rut.var.get().strip() or None,
             'rep_legal_nombres': self.campo_rep_nombre.get().strip() or None,
         }
         
         try:
             if self.empresa:
                 # Actualizar empresa existente
-                update('empresa', datos, {'codigo': self.empresa['codigo']})
+                update('empresa', datos, {'rut': rut})
                 messagebox.showinfo('Éxito', 'Empresa actualizada correctamente')
             else:
                 # Crear nueva empresa
@@ -272,13 +345,13 @@ class DialogoTrabajador(tk.Toplevel):
     """
     Diálogo para crear/editar trabajador
     """
-    def __init__(self, parent, trabajador=None, empresa_rut=None):
+    def __init__(self, parent, trabajador=None, empresa_codigo=None):
         super().__init__(parent)
         self.title('Nuevo Trabajador' if not trabajador else 'Editar Trabajador')
-        self.geometry('700x750')
+        self.geometry('700x900')
         self.resizable(True, True)
         self.trabajador = trabajador
-        self.empresa_rut = empresa_rut
+        self.empresa_codigo = empresa_codigo
         self.resultado = None
         
         # Hacer que el diálogo sea modal
@@ -332,9 +405,9 @@ class DialogoTrabajador(tk.Toplevel):
         frame_campos.pack(fill='both', expand=True, pady=10)
         
         # RUT
-        lbl_rut = ttk.Label(frame_campos, text='RUT * (Formato: XX.XXX.XXX-K)', font=FUENTES['normal'])
+        lbl_rut = ttk.Label(frame_campos, text='RUT * (Formato automático)', font=FUENTES['normal'])
         lbl_rut.pack(anchor='w', pady=(10, 2))
-        self.campo_rut = ttk.Entry(frame_campos, font=FUENTES['normal'], width=50)
+        self.campo_rut = CampoRUT(frame_campos, font=FUENTES['normal'], width=50)
         self.campo_rut.pack(fill='x', pady=(0, 15))
         
         # Nombre
@@ -355,37 +428,67 @@ class DialogoTrabajador(tk.Toplevel):
         self.campo_ap_materno = ttk.Entry(frame_campos, font=FUENTES['normal'], width=50)
         self.campo_ap_materno.pack(fill='x', pady=(0, 15))
         
+        # Correo
+        lbl_correo = ttk.Label(frame_campos, text='Correo', font=FUENTES['normal'])
+        lbl_correo.pack(anchor='w', pady=(10, 2))
+        self.campo_correo = ttk.Entry(frame_campos, font=FUENTES['normal'], width=50)
+        self.campo_correo.pack(fill='x', pady=(0, 15))
+        
+        # Teléfono
+        lbl_fono = ttk.Label(frame_campos, text='Teléfono', font=FUENTES['normal'])
+        lbl_fono.pack(anchor='w', pady=(10, 2))
+        self.campo_fono = ttk.Entry(frame_campos, font=FUENTES['normal'], width=50)
+        self.campo_fono.pack(fill='x', pady=(0, 30))
+        
+        # Separador - Datos Laborales
+        ttk.Separator(scrollable_frame, orient='horizontal').pack(fill='x', pady=10)
+        
+        lbl_laborales = ttk.Label(scrollable_frame, text='DATOS LABORALES', font=FUENTES['subtitulo'])
+        lbl_laborales.pack(anchor='w', pady=(10, 10))
+        
+        frame_laborales = ttk.Frame(scrollable_frame)
+        frame_laborales.pack(fill='both', expand=True, pady=10)
+        
         # Cargo
-        lbl_cargo = ttk.Label(frame_campos, text='Cargo *', font=FUENTES['normal'])
+        lbl_cargo = ttk.Label(frame_laborales, text='Cargo *', font=FUENTES['normal'])
         lbl_cargo.pack(anchor='w', pady=(10, 2))
-        self.campo_cargo = ttk.Entry(frame_campos, font=FUENTES['normal'], width=50)
+        self.campo_cargo = ttk.Entry(frame_laborales, font=FUENTES['normal'], width=50)
         self.campo_cargo.pack(fill='x', pady=(0, 15))
         
         # Sueldo Base
-        lbl_sueldo = ttk.Label(frame_campos, text='Sueldo Base (CLP) *', font=FUENTES['normal'])
+        lbl_sueldo = ttk.Label(frame_laborales, text='Sueldo Base (CLP) *', font=FUENTES['normal'])
         lbl_sueldo.pack(anchor='w', pady=(10, 2))
-        self.campo_sueldo = ttk.Entry(frame_campos, font=FUENTES['normal'], width=50)
+        self.campo_sueldo = ttk.Entry(frame_laborales, font=FUENTES['normal'], width=50)
         self.campo_sueldo.pack(fill='x', pady=(0, 15))
         
+        # Fecha Ingreso
+        lbl_fecha = ttk.Label(frame_laborales, text='Fecha Ingreso (DD/MM/YYYY - Formato automático)', font=FUENTES['normal'])
+        lbl_fecha.pack(anchor='w', pady=(10, 2))
+        self.campo_fecha = CampoFecha(frame_laborales, font=FUENTES['normal'], width=50)
+        self.campo_fecha.pack(fill='x', pady=(0, 30))
+        
+        # Separador - Datos Previsionales
+        ttk.Separator(scrollable_frame, orient='horizontal').pack(fill='x', pady=10)
+        
+        lbl_previsionales = ttk.Label(scrollable_frame, text='DATOS PREVISIONALES', font=FUENTES['subtitulo'])
+        lbl_previsionales.pack(anchor='w', pady=(10, 10))
+        
+        frame_previsionales = ttk.Frame(scrollable_frame)
+        frame_previsionales.pack(fill='both', expand=True, pady=10)
+        
         # AFP
-        lbl_afp = ttk.Label(frame_campos, text='AFP (%)', font=FUENTES['normal'])
+        lbl_afp = ttk.Label(frame_previsionales, text='AFP (%)', font=FUENTES['normal'])
         lbl_afp.pack(anchor='w', pady=(10, 2))
-        self.campo_afp = ttk.Entry(frame_campos, font=FUENTES['normal'], width=50)
+        self.campo_afp = ttk.Entry(frame_previsionales, font=FUENTES['normal'], width=50)
         self.campo_afp.insert(0, '10.0')
         self.campo_afp.pack(fill='x', pady=(0, 15))
         
         # Salud
-        lbl_salud = ttk.Label(frame_campos, text='Salud (%)', font=FUENTES['normal'])
+        lbl_salud = ttk.Label(frame_previsionales, text='Salud (%)', font=FUENTES['normal'])
         lbl_salud.pack(anchor='w', pady=(10, 2))
-        self.campo_salud = ttk.Entry(frame_campos, font=FUENTES['normal'], width=50)
+        self.campo_salud = ttk.Entry(frame_previsionales, font=FUENTES['normal'], width=50)
         self.campo_salud.insert(0, '7.0')
-        self.campo_salud.pack(fill='x', pady=(0, 15))
-        
-        # Fecha Ingreso
-        lbl_fecha = ttk.Label(frame_campos, text='Fecha Ingreso (YYYY-MM-DD)', font=FUENTES['normal'])
-        lbl_fecha.pack(anchor='w', pady=(10, 2))
-        self.campo_fecha = ttk.Entry(frame_campos, font=FUENTES['normal'], width=50)
-        self.campo_fecha.pack(fill='x', pady=(0, 30))
+        self.campo_salud.pack(fill='x', pady=(0, 30))
         
         # Separador
         ttk.Separator(scrollable_frame, orient='horizontal').pack(fill='x', pady=10)
@@ -426,18 +529,26 @@ class DialogoTrabajador(tk.Toplevel):
         
         # Si es edición, cargar datos
         if trabajador:
-            self.campo_rut.insert(0, trabajador.get('rut', ''))
+            self.campo_rut.var.set(trabajador.get('rut', ''))
             self.campo_rut.config(state='readonly')
             self.campo_nombre.insert(0, trabajador.get('nombre', ''))
-            self.campo_ap_paterno.insert(0, trabajador.get('ap_paterno', ''))
-            self.campo_ap_materno.insert(0, trabajador.get('ap_materno', ''))
-            self.campo_cargo.insert(0, trabajador.get('cargo', ''))
+            self.campo_ap_paterno.insert(0, trabajador.get('ap_paterno', '') or '')
+            self.campo_ap_materno.insert(0, trabajador.get('ap_materno', '') or '')
+            self.campo_correo.insert(0, trabajador.get('correo', '') or '')
+            self.campo_fono.insert(0, trabajador.get('fono', '') or '')
+            self.campo_cargo.insert(0, trabajador.get('cargo', '') or '')
             self.campo_sueldo.insert(0, str(trabajador.get('sueldo_base', '')))
             self.campo_afp.delete(0, 'end')
             self.campo_afp.insert(0, str(trabajador.get('afp', '10.0')))
             self.campo_salud.delete(0, 'end')
             self.campo_salud.insert(0, str(trabajador.get('salud', '7.0')))
-            self.campo_fecha.insert(0, trabajador.get('fecha_ingreso', ''))
+            fecha = trabajador.get('fecha_ingreso', '')
+            if fecha:
+                # Convertir de YYYY-MM-DD a DD/MM/YYYY si es necesario
+                if '-' in fecha:
+                    partes = fecha.split('-')
+                    fecha = f"{partes[2]}/{partes[1]}/{partes[0]}"
+            self.campo_fecha.var.set(fecha)
         
         # Centrar en pantalla
         self.update_idletasks()
@@ -450,9 +561,9 @@ class DialogoTrabajador(tk.Toplevel):
     
     def guardar(self):
         """
-        Valida y guarda los datos del trabajador
+        Valida y guarda los datos del trabajador en las tablas correctas
         """
-        rut = self.campo_rut.get().strip()
+        rut = self.campo_rut.var.get().strip()
         nombre = self.campo_nombre.get().strip()
         cargo = self.campo_cargo.get().strip()
         sueldo = self.campo_sueldo.get().strip()
@@ -481,28 +592,59 @@ class DialogoTrabajador(tk.Toplevel):
             messagebox.showerror('Error', 'Ingrese valores numéricos válidos')
             return
         
-        datos = {
+        # Convertir fecha de DD/MM/YYYY a YYYY-MM-DD
+        fecha_ingreso = self.campo_fecha.var.get().strip()
+        if fecha_ingreso:
+            try:
+                partes = fecha_ingreso.split('/')
+                if len(partes) == 3:
+                    fecha_ingreso = f"{partes[2]}-{partes[1]}-{partes[0]}"
+            except:
+                fecha_ingreso = None
+        else:
+            fecha_ingreso = None
+        
+        # Datos para tabla TRABAJADOR
+        datos_trabajador = {
             'rut': rut,
             'nombre': nombre,
             'ap_paterno': self.campo_ap_paterno.get().strip() or None,
             'ap_materno': self.campo_ap_materno.get().strip() or None,
+            'correo': self.campo_correo.get().strip() or None,
+            'fono': self.campo_fono.get().strip() or None,
+            'empresa_codigo': self.empresa_codigo,
+        }
+        
+        # Datos para tabla DATOS_LABORALES
+        datos_laborales = {
+            'trabajador_rut': rut,
             'cargo': cargo,
             'sueldo_base': sueldo_float,
-            'afp': afp_float,
-            'salud': salud_float,
-            'fecha_ingreso': self.campo_fecha.get().strip() or None,
-            'empresa_rut': self.empresa_rut,
+            'fecha_contrato': fecha_ingreso,
+        }
+        
+        # Datos para tabla DATOS_PREVISIONALES
+        datos_previsionales = {
+            'trabajador_rut': rut,
+            'afp_cotiza_afc': afp_float,
+            'modalidad_salud': salud_float,
         }
         
         try:
             if self.trabajador:
-                update('trabajador', datos, {'rut': rut})
+                # Actualizar trabajador existente
+                update('trabajador', datos_trabajador, {'rut': rut})
+                update('datos_laborales', datos_laborales, {'trabajador_rut': rut})
+                update('datos_previsionales', datos_previsionales, {'trabajador_rut': rut})
                 messagebox.showinfo('Éxito', 'Trabajador actualizado correctamente')
             else:
-                insert('trabajador', datos)
+                # Crear nuevo trabajador
+                insert('trabajador', datos_trabajador)
+                insert('datos_laborales', datos_laborales)
+                insert('datos_previsionales', datos_previsionales)
                 messagebox.showinfo('Éxito', 'Trabajador creado correctamente')
             
-            self.resultado = datos
+            self.resultado = datos_trabajador
             self.destroy()
         except Exception as e:
             messagebox.showerror('Error', f'Error al guardar trabajador:\n{str(e)}')
