@@ -1,0 +1,2 @@
+# Este proyecto utiliza únicamente librerías estándar de Python (sqlite3, datetime, etc.).
+# No se requieren dependencias externas para ejecutar el sistema.
