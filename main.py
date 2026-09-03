@@ -1,21 +1,30 @@
 """
 Sistema Profesional de Remuneraciones - Chile
-Punto de entrada principal. Inicializa la base de datos SQLite (si no existe)
-y despliega el menú principal en consola.
+Interfaz Gráfica con tkinter
 """
+import tkinter as tk
+from tkinter import ttk
 from database.init_db import init_database
-from ui.menus import menu_principal
+from gui.main_window import VentanaPrincipal
 
 
-def main():
+def iniciar_aplicacion():
+    """Inicia la aplicación con interfaz gráfica"""
+    # Inicializar base de datos
     conn = init_database()
     conn.close()
-    print("\n" + "="*60)
-    print("   BIENVENIDO AL SISTEMA DE REMUNERACIONES - CHILE")
-    print("="*60)
-    menu_principal()
-    print("\nHasta pronto.")
+    
+    # Crear ventana raíz
+    root = tk.Tk()
+    root.title("Sistema de Remuneraciones - Chile")
+    root.geometry("1200x700")
+    
+    # Crear ventana principal
+    app = VentanaPrincipal(root)
+    
+    # Iniciar mainloop
+    root.mainloop()
 
 
 if __name__ == "__main__":
-    main()
+    iniciar_aplicacion()
