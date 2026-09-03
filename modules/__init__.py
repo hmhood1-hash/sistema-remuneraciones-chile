@@ -1,0 +1,3 @@
+"""
+Paquete de módulos funcionales
+"""
