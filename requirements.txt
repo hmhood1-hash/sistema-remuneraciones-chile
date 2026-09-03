@@ -1,0 +1,5 @@
+# Sistema Profesional de Remuneraciones - Chile
+# Dependencias del proyecto (Python 3.9+)
+
+openpyxl>=3.1.0
+reportlab>=4.0.0
