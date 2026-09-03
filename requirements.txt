@@ -1,0 +1,3 @@
+# Sistema de Remuneraciones Chile
+# Usa solo librerias estándar de Python (no necesita instalaciones adicionales)
+# Python 3.9+
