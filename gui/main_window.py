@@ -142,9 +142,17 @@ class VentanaPrincipal(ttk.Frame):
         aplicar_estilo_boton(btn_nueva, 'primario')
         btn_nueva.pack(side='left', padx=5)
         
+        btn_editar = tk.Button(
+            frame_botones,
+            text='✏️ Editar',
+            command=self._editar_empresa
+        )
+        aplicar_estilo_boton(btn_editar, 'secundario')
+        btn_editar.pack(side='left', padx=5)
+        
         btn_eliminar = tk.Button(
             frame_botones,
-            text='Eliminar',
+            text='🗑️ Eliminar',
             command=self._eliminar_empresa
         )
         aplicar_estilo_boton(btn_eliminar, 'peligro')
@@ -173,6 +181,26 @@ class VentanaPrincipal(ttk.Frame):
         self.root.wait_window(dialogo)
         self.mostrar_empresas()
     
+    def _editar_empresa(self):
+        """
+        Edita la empresa seleccionada
+        """
+        if not hasattr(self, 'tabla_actual'):
+            messagebox.showwarning('Advertencia', 'Seleccione una empresa')
+            return
+        
+        empresa = self.tabla_actual.obtener_seleccion()
+        if not empresa:
+            messagebox.showwarning('Advertencia', 'Seleccione una empresa')
+            return
+        
+        # Obtener datos completos de la empresa
+        empresa_completa = fetch_one('empresa', {'codigo': empresa['codigo']})
+        if empresa_completa:
+            dialogo = DialogoEmpresa(self.root, empresa_completa)
+            self.root.wait_window(dialogo)
+            self.mostrar_empresas()
+    
     def _eliminar_empresa(self):
         """
         Elimina la empresa seleccionada
@@ -186,9 +214,13 @@ class VentanaPrincipal(ttk.Frame):
             messagebox.showwarning('Advertencia', 'Seleccione una empresa')
             return
         
-        if messagebox.askyesno('Confirmar', f'¿Eliminar {empresa["razon_social"]}?'):
-            delete('empresa', {'codigo': empresa['codigo']})
-            self.mostrar_empresas()
+        if messagebox.askyesno('Confirmar', f'¿Eliminar {empresa["razon_social"]}?\n\nEsta acción no se puede deshacer.'):
+            try:
+                delete('empresa', {'codigo': empresa['codigo']})
+                messagebox.showinfo('Éxito', 'Empresa eliminada correctamente')
+                self.mostrar_empresas()
+            except Exception as e:
+                messagebox.showerror('Error', f'Error al eliminar empresa:\n{str(e)}')
     
     def mostrar_trabajadores(self):
         """
@@ -217,10 +249,36 @@ class VentanaPrincipal(ttk.Frame):
         aplicar_estilo_boton(btn_nuevo, 'primario')
         btn_nuevo.pack(side='left', padx=5)
         
+        btn_editar = tk.Button(
+            frame_botones,
+            text='✏️ Editar',
+            command=self._editar_trabajador
+        )
+        aplicar_estilo_boton(btn_editar, 'secundario')
+        btn_editar.pack(side='left', padx=5)
+        
+        btn_eliminar = tk.Button(
+            frame_botones,
+            text='🗑️ Eliminar',
+            command=self._eliminar_trabajador
+        )
+        aplicar_estilo_boton(btn_eliminar, 'peligro')
+        btn_eliminar.pack(side='left', padx=5)
+        
         # Tabla de trabajadores
         trabajadores = fetch_all('trabajador')
         if trabajadores:
-            columnas = ['rut', 'nombre', 'ap_paterno', 'ap_materno']
+            # Agregar datos laborales a cada trabajador
+            for trab in trabajadores:
+                datos_laborales = fetch_one('datos_laborales', {'trabajador_rut': trab['rut']})
+                if datos_laborales:
+                    trab['cargo'] = datos_laborales.get('cargo', '')
+                    trab['sueldo_base'] = datos_laborales.get('sueldo_base', '')
+                else:
+                    trab['cargo'] = ''
+                    trab['sueldo_base'] = ''
+            
+            columnas = ['rut', 'nombre', 'ap_paterno', 'ap_materno', 'cargo', 'sueldo_base']
             tabla = TablaDatos(self.frame_contenido, columnas, trabajadores)
             tabla.pack(fill='both', expand=True, pady=10)
             self.tabla_actual = tabla
@@ -239,6 +297,67 @@ class VentanaPrincipal(ttk.Frame):
         dialogo = DialogoTrabajador(self.root)
         self.root.wait_window(dialogo)
         self.mostrar_trabajadores()
+    
+    def _editar_trabajador(self):
+        """
+        Edita el trabajador seleccionado
+        """
+        if not hasattr(self, 'tabla_actual'):
+            messagebox.showwarning('Advertencia', 'Seleccione un trabajador')
+            return
+        
+        trabajador = self.tabla_actual.obtener_seleccion()
+        if not trabajador:
+            messagebox.showwarning('Advertencia', 'Seleccione un trabajador')
+            return
+        
+        # Obtener datos completos del trabajador
+        trabajador_completo = fetch_one('trabajador', {'rut': trabajador['rut']})
+        if trabajador_completo:
+            # Agregar datos laborales y previsionales
+            datos_laborales = fetch_one('datos_laborales', {'trabajador_rut': trabajador['rut']})
+            datos_previsionales = fetch_one('datos_previsionales', {'trabajador_rut': trabajador['rut']})
+            
+            if datos_laborales:
+                trabajador_completo['cargo'] = datos_laborales.get('cargo', '')
+                trabajador_completo['sueldo_base'] = datos_laborales.get('sueldo_base', '')
+                trabajador_completo['fecha_ingreso'] = datos_laborales.get('fecha_contrato', '')
+            
+            if datos_previsionales:
+                trabajador_completo['afp'] = datos_previsionales.get('afp_cotiza_afc', 10.0)
+                trabajador_completo['salud'] = datos_previsionales.get('modalidad_salud', 7.0)
+            
+            dialogo = DialogoTrabajador(self.root, trabajador_completo)
+            self.root.wait_window(dialogo)
+            self.mostrar_trabajadores()
+    
+    def _eliminar_trabajador(self):
+        """
+        Elimina el trabajador seleccionado
+        """
+        if not hasattr(self, 'tabla_actual'):
+            messagebox.showwarning('Advertencia', 'Seleccione un trabajador')
+            return
+        
+        trabajador = self.tabla_actual.obtener_seleccion()
+        if not trabajador:
+            messagebox.showwarning('Advertencia', 'Seleccione un trabajador')
+            return
+        
+        if messagebox.askyesno('Confirmar', f'¿Eliminar a {trabajador["nombre"]}?\n\nEsta acción no se puede deshacer.'):
+            try:
+                rut = trabajador['rut']
+                # Eliminar datos relacionados primero
+                delete('datos_previsionales', {'trabajador_rut': rut})
+                delete('datos_laborales', {'trabajador_rut': rut})
+                delete('carga_familiar', {'trabajador_rut': rut})
+                delete('vacacion', {'trabajador_rut': rut})
+                # Finalmente eliminar trabajador
+                delete('trabajador', {'rut': rut})
+                messagebox.showinfo('Éxito', 'Trabajador eliminado correctamente')
+                self.mostrar_trabajadores()
+            except Exception as e:
+                messagebox.showerror('Error', f'Error al eliminar trabajador:\n{str(e)}')
     
     def mostrar_instituciones(self):
         """
@@ -324,7 +443,7 @@ class VentanaPrincipal(ttk.Frame):
                 
                 # Mostrar resumen
                 resumen = f"""Liquidación de Sueldo
-                
+
 Trabajador: {trabajador['nombre']}
 Año-Mes: {mes}/{anio}
 
